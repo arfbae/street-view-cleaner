@@ -34,3 +34,13 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+# 1. Rename your updated file to the standard .yml extension, overwriting the old one
+mv docker-compose.yaml docker-compose.yml
+
+# 2. Tell Git to track the updated file and remove the duplicate name
+git add docker-compose.yml
+git rm docker-compose.yaml 2>/dev/null || git rm --cached docker-compose.yaml
+
+# 3. Push the clean, unified production stack back to GitHub
+git commit -m "chore: unify docker-compose configuration onto production stack layout"
+git push origin main
