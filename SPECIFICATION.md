@@ -468,3 +468,11 @@ Version 1.0 is implemented for Windows localhost use with Python 3.11, FastAPI, 
 ## Native Instagram Strategy Registration
 
 `edit_strategies.py` now contains `InstagramCleaningStrategy`, a concrete implementation of the shared `EditStrategy` interface. `presets.py` maps `instagram_screenshot_cleaner` directly to that class through `STRATEGY_BY_PRESET`. The strategy defines exact normalized coordinate rules and produces pixel boxes and masks for the title banner, story rings, post engagement overlay, and bottom application menu dock. The API accepts the explicit `mode` field alongside `preset`, and the frontend sends both values.
+
+## Live Provider and OCR Configuration
+
+- Qwen Local endpoint and edit route are configurable with `QWEN_BASE_URL`, `QWEN_EDIT_PATH`, and `QWEN_MODEL`.
+- Nano Banana remains an HTTP image-edit fallback configured by `NANO_BANANA_ENDPOINT` and `NANO_BANANA_API_KEY`.
+- Google Cloud Vision OCR is an optional detector configured by `GOOGLE_VISION_ENABLED`, `GOOGLE_APPLICATION_CREDENTIALS`, and `GOOGLE_VISION_PROJECT`.
+- OCR runs in a worker thread, filters text to profile-specific UI terms, and appends conservative bounding boxes to the existing detection mask.
+- No API keys, service-account JSON, or model weights are stored in source control.

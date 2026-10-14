@@ -97,3 +97,20 @@ The application now includes a WAL-backed SQLite state cache and durable queue m
 ## Native Instagram Strategy
 
 `InstagramCleaningStrategy` is registered directly by the `instagram_screenshot_cleaner` preset. Its exact normalized coordinate rules cover the top navigation title banner, story tray rings, post engagement overlay, and bottom application menu dock. The strategy converts those rules to pixel bounding boxes, exposes a binary mask, and provides an optional OpenCV Telea patch helper. The frontend sends both `preset` and `mode` so Instagram selection reaches the backend explicitly.
+
+## Live Provider Configuration
+
+The live adapters are configured through the local `.env` file; credentials are never committed.
+
+```env
+DEFAULT_PROVIDER=qwen_local
+QWEN_BASE_URL=http://127.0.0.1:8188
+QWEN_EDIT_PATH=/v1/images/edits
+QWEN_MODEL=Qwen/Qwen-Image-Edit-2511
+NANO_BANANA_ENDPOINT=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent
+NANO_BANANA_API_KEY=replace-locally
+GOOGLE_VISION_ENABLED=false
+GOOGLE_APPLICATION_CREDENTIALS=C:\\Users\\<user>\\.gcp\\street-view-vision.json
+```
+
+Qwen Local is attempted first when selected. The existing provider fallback order then tries Nano Banana and Qwen Local as configured. Google Cloud Vision OCR is optional and disabled by default; enable it only after installing the `vision` dependency and placing a service-account JSON file at the local path. OCR only contributes likely UI text bounding boxes and does not edit images.

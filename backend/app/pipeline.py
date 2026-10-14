@@ -3,7 +3,7 @@ from pathlib import Path
 from .config import settings
 from .presets import instruction_for
 from .fail_safes import validate_output, batch_should_stop
-from .ui_detection import detect_ui
+from .ui_detection import detect_ui, enrich_with_google_vision
 from .image_io import load_image, save_bytes
 from .logging_module import logger
 from .edit_strategies import strategy_for_preset, normalize_regions
@@ -33,10 +33,14 @@ async def process_item(job_id,item_id,filename,data,requested_provider,requested
     try: image=load_image(data)
     except Exception: return {"item_id":item_id,"filename":filename,"status":"failed","reason":"invalid_image"}
     profile="instagram" if requested_preset=="instagram_screenshot_cleaner" else "street_view"
-    detection=detect_ui(image, profile=profile); preset,instruction=instruction_for(detection["confidence"],requested_preset)
+    detection=detect_ui(image, profile=profile)
+    detection=await enrich_with_google_vision(image,data,detection)
+    preset,instruction=instruction_for(detection["confidence"],requested_preset)
     selected_strategy=strategy_for_preset(preset, requested_provider)
     if hasattr(selected_strategy, "regions_for_image"):
-        detection["regions"]=selected_strategy.regions_for_image(image)
+        exact_regions=selected_strategy.regions_for_image(image)
+        ocr_regions=[region for region in detection["regions"] if region.get("name")=="google_vision_ui_text"]
+        detection["regions"]=exact_regions + ocr_regions
     result,used,status,reason=await edit_safe(data,instruction,requested_provider,preset,detection["regions"])
     out_path=None
     if result:

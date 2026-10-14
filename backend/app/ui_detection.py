@@ -50,3 +50,13 @@ def patch_ui_regions(image:Image.Image, regions, radius:int=3) -> Image.Image:
     mask=cv2.dilate(mask,kernel,iterations=1)
     patched=cv2.inpaint(source,mask,radius,cv2.INPAINT_TELEA)
     return Image.fromarray(cv2.cvtColor(patched,cv2.COLOR_BGR2RGB))
+
+
+async def enrich_with_google_vision(image:Image.Image, image_bytes:bytes, detection:dict) -> dict:
+    """Optionally append OCR-confirmed UI text regions without making OCR mandatory."""
+    from .google_vision import detect_ui_text
+    ocr_regions=await detect_ui_text(image_bytes, detection["profile"])
+    if ocr_regions:
+        detection={**detection, "regions": detection["regions"] + ocr_regions, "ocr": "google_vision"}
+        detection["confidence"]=max(detection["confidence"],0.70)
+    return detection
