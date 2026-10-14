@@ -1,0 +1,10 @@
+services:
+  street-view-cleaner:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    volumes:
+      - ./storage:/app/storage
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --workers 4
+    restart: unless-stopped

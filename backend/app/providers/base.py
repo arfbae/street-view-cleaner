@@ -1,0 +1,3 @@
+from typing import Protocol
+class Provider(Protocol):
+    async def edit(self, image: bytes, instruction: str) -> bytes: ...

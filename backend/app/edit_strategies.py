@@ -1,0 +1,58 @@
+from __future__ import annotations
+from abc import ABC, abstractmethod
+from typing import Any
+from PIL import Image
+from .providers.factory import get_provider
+from .ui_detection import mask_from_regions, patch_ui_regions
+
+RegionInput = list[dict[str, Any]] | Any | None
+
+class EditStrategy(ABC):
+    """Provider-independent editing boundary accepting boxes or masks."""
+    @abstractmethod
+    async def edit(self, image_bytes: bytes, instruction: str, regions: RegionInput) -> bytes: ...
+
+class ProviderEditStrategy(EditStrategy):
+    def __init__(self, provider_name: str): self.provider_name=provider_name
+    async def edit(self, image_bytes: bytes, instruction: str, regions: RegionInput) -> bytes:
+        return await get_provider(self.provider_name).edit(image_bytes, instruction)
+
+class InstagramCleaningStrategy(ProviderEditStrategy):
+    """Coordinate-driven Instagram screenshot UI cleaning strategy.
+
+    Coordinates are normalized to image width/height and converted to exact pixel
+    boxes per image. The strategy deliberately masks only application chrome:
+    title banner, story rings, engagement controls, and bottom navigation dock.
+    """
+    PROFILE="instagram"
+    COORDINATE_RULES={
+        "top_navigation_title_banner": (0.00, 0.00, 1.00, 0.12),
+        "story_tray_rings": (0.00, 0.12, 1.00, 0.30),
+        "post_engagement_overlay": (0.00, 0.70, 1.00, 0.88),
+        "bottom_application_menu_dock": (0.00, 0.88, 1.00, 1.00),
+    }
+
+    def regions_for_image(self, image: Image.Image) -> list[dict[str, Any]]:
+        width,height=image.size
+        return [{
+            "name":name,
+            "box":[round(x1*width),round(y1*height),round(x2*width),round(y2*height)],
+            "confidence":0.50,
+            "profile":self.PROFILE,
+        } for name,(x1,y1,x2,y2) in self.COORDINATE_RULES.items()]
+
+    def mask_for_image(self, image: Image.Image):
+        return mask_from_regions(image.size, self.regions_for_image(image))
+
+    def patch_ui(self, image: Image.Image, radius: int=3) -> Image.Image:
+        """Provide an explicit OpenCV patch helper for local deterministic use."""
+        return patch_ui_regions(image, self.regions_for_image(image), radius)
+
+def strategy_for_preset(preset: str | None, provider_name: str) -> EditStrategy:
+    return InstagramCleaningStrategy(provider_name) if preset == "instagram_screenshot_cleaner" else ProviderEditStrategy(provider_name)
+
+def normalize_regions(regions: RegionInput) -> RegionInput:
+    """Keep list-of-boxes and ndarray masks as valid interchangeable inputs."""
+    if regions is None or isinstance(regions, list): return regions
+    if getattr(regions, "ndim", None) == 2: return regions
+    raise TypeError("regions must be a list of boxes or a 2D mask")
