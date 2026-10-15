@@ -114,3 +114,23 @@ GOOGLE_APPLICATION_CREDENTIALS=C:\\Users\\<user>\\.gcp\\street-view-vision.json
 ```
 
 Qwen Local is attempted first when selected. The existing provider fallback order then tries Nano Banana and Qwen Local as configured. Google Cloud Vision OCR is optional and disabled by default; enable it only after installing the `vision` dependency and placing a service-account JSON file at the local path. OCR only contributes likely UI text bounding boxes and does not edit images.
+
+## Docker Compose deployment
+
+Docker Desktop users can deploy the local stack with the included PowerShell script:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+.\deploy.ps1
+```
+
+The script creates `.env` from `.env.template` when needed, builds the image, starts the four-worker Compose service, waits for `/healthz`, and prints the local URL. Use `.\deploy.ps1 -Logs` to follow logs, `.\deploy.ps1 -NoBuild` to restart without rebuilding, and `.\deploy.ps1 -Down` to stop the stack.
+
+For Linux or WSL:
+
+```bash
+chmod +x ./deploy.sh
+./deploy.sh
+```
+
+The Bash script supports `--logs`, `--no-build`, `--down`, and `--timeout SECONDS`. The Compose service includes a Python-based healthcheck and persists application state under `./storage`. The deployment remains local-only on port 8000; add authentication and TLS before exposing it publicly.

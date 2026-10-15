@@ -1,56 +1,63 @@
-Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "🚀 STARTING STREET-VIEW & INSTAGRAM CLEANER DEPLOYMENT" -ForegroundColor Cyan
-Write-Host "==========================================================" -ForegroundColor Cyan
+[CmdletBinding()]
+param(
+    [switch]$Down,
+    [switch]$Logs,
+    [switch]$NoBuild,
+    [int]$TimeoutSeconds = 120
+)
 
-# 1. Environment Verification
+$ErrorActionPreference = "Stop"
+$ComposeService = "street-view-cleaner"
+
+function Invoke-Compose {
+    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
+    & docker compose @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "docker compose failed with exit code $LASTEXITCODE"
+    }
+}
+
+if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+    throw "Docker Desktop is required. Install/start Docker Desktop, then run this script again."
+}
+
+if ($Down) {
+    Invoke-Compose down
+    exit 0
+}
+
 if (-not (Test-Path ".env")) {
-    Write-Host "⚠️ Warning: .env file not found. Creating from .env.example..." -ForegroundColor Yellow
-    if (Test-Path ".env.example") {
-        Copy-Item ".env.example" ".env"
-        Write-Host "✅ .env created. Please fill in your live API keys if using providers." -ForegroundColor Green
-    } else {
-        Write-Error "❌ Error: Neither .env nor .env.example exists. Deployment aborted."
-        Exit
+    if (-not (Test-Path ".env.template")) {
+        throw "Missing .env.template; run this script from the project root."
     }
+    Copy-Item ".env.template" ".env"
+    Write-Warning "Created .env from .env.template. Add Qwen/Nano Banana/Google credentials before live processing."
 }
 
-# 2. Local Python Dependency Pre-check (Optional Loop Detection)
-if (Test-Path "verify_imports.py") {
-    Write-Host "⏳ Running pre-deployment import loop sanity check..." -ForegroundColor Cyan
-    python verify_imports.py
-    if (\$LASTEXITCODE -ne 0) {
-        Write-Error "❌ Error: Project contains circular imports or module syntax issues. Fixed required before container build."
-        Exit
-    }
+$upArgs = @("up", "-d")
+if (-not $NoBuild) { $upArgs += "--build" }
+Invoke-Compose @upArgs
+
+$deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+$ready = $false
+while ((Get-Date) -lt $deadline) {
+    try {
+        & docker compose exec -T $ComposeService python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3).read()" *> $null
+        if ($LASTEXITCODE -eq 0) { $ready = $true; break }
+    } catch { }
+    Start-Sleep -Seconds 2
 }
 
-# 3. Docker Orchestration Build
-Write-Host "⏳ Building application image components and starting stack..." -ForegroundColor Cyan
-docker-compose up --build -d
-
-# 4. Active Health State Verification
-Write-Host "⏳ Waiting for API engine to report healthy status..." -ForegroundColor Cyan
-\$retries = 10
-\(healthy =\)false
-
-while (\(retries -gt 0 -and -not\)healthy) {
-    \(status = docker inspect --format='{{.State.Health.Status}}' street-view-cleaner-backend 2>\)null
-    if (\$status -eq "healthy") {
-        \(healthy =\)true
-    } else {
-        Write-Host "⏳ App starting (Current state: \(status)... Retries left:\)retries"
-        Start-Sleep -Seconds 3
-        \$retries--
-    }
+if (-not $ready) {
+    Invoke-Compose ps
+    Invoke-Compose logs --tail 100 $ComposeService
+    throw "The application did not become healthy within $TimeoutSeconds seconds."
 }
 
-if (\$healthy) {
-    Write-Host "`n==========================================================" -ForegroundColor Green
-    Write-Host "🎉 DEPLOYMENT SUCCESSFUL!" -ForegroundColor Green
-    Write-Host "➔ Frontend Application Interface open on: http://localhost" -ForegroundColor Green
-    Write-Host "➔ API Gateway Engine open on: http://localhost:8000" -ForegroundColor Green
-    Write-Host "==========================================================" -ForegroundColor Green
-} else {
-    Write-Host "`n❌ ERROR: System containers are running, but the API failed healthchecks." -ForegroundColor Red
-    Write-Host "Run 'docker-compose logs backend' to debug engine initialization faults." -ForegroundColor Red
+Invoke-Compose ps
+Write-Host "Street View Cleaner is ready at http://localhost:8000"
+Write-Host "Use .\deploy.ps1 -Logs to follow logs or .\deploy.ps1 -Down to stop the stack."
+
+if ($Logs) {
+    Invoke-Compose logs -f $ComposeService
 }
