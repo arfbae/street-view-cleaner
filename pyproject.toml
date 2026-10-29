@@ -8,6 +8,16 @@ version = "1.1.0"
 description = "Local Windows-first Street View UI cleanup application for removing overlays while preserving real-world scene content."
 readme = "README.md"
 requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "arfbae" }]
+keywords = ["street-view", "image-cleanup", "fastapi", "windows", "opencv"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Framework :: FastAPI",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
@@ -17,7 +27,6 @@ dependencies = [
     "numpy>=1.26",
     "httpx>=0.27",
     "pydantic-settings>=2.0",
-    "google-cloud-vision>=3.7; extra == 'vision'"
 ]
 
 [project.optional-dependencies]
@@ -35,6 +44,7 @@ street-view-cleaner = "backend.app.main:main"
 [project.urls]
 Homepage = "https://github.com/arfbae/street-view-cleaner"
 Repository = "https://github.com/arfbae/street-view-cleaner"
+Issues = "https://github.com/arfbae/street-view-cleaner/issues"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
@@ -44,3 +54,6 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 include = ["backend*"]
+
+[tool.setuptools.package-data]
+backend = ["**/*.html", "**/*.js", "**/*.css", "**/*.json"]
