@@ -1,0 +1,4 @@
+include README.md
+recursive-include frontend *
+recursive-include backend *
+prune tests
