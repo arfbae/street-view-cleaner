@@ -1,4 +1,4 @@
-import asyncio, json, uuid, zipfile
+import json, uuid, zipfile
 from pathlib import Path
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks

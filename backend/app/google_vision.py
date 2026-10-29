@@ -40,10 +40,14 @@ def _detect_sync(image_bytes: bytes, profile: str):
     if error is not None and getattr(error, "message", None):
         raise RuntimeError(error.message)
 
+    text_annotations = getattr(response, "text_annotations", None) or []
+    if not text_annotations:
+        return []
+
     image = Image.open(__import__("io").BytesIO(image_bytes))
     width, height = image.size
     regions = []
-    for annotation in response.text_annotations[1:]:
+    for annotation in text_annotations[1:]:
         text = annotation.description or ""
         if not _likely_ui_text(text, profile):
             continue

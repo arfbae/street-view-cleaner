@@ -26,7 +26,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     def validate_provider_settings(self, provider_name: str | None = None) -> str:
-        provider = (provider_name or self.default_provider or "mock").strip()
+        provider = (provider_name or self.default_provider or "mock").strip().lower()
+        if provider not in {"mock", "qwen_local", "nano_banana"}:
+            raise ValueError(f"unsupported_provider: {provider}")
         if provider == "qwen_local" and not self.qwen_base_url:
             raise ValueError("QWEN_BASE_URL is required when qwen_local is selected")
         if provider == "nano_banana" and (not self.nano_banana_endpoint or not self.nano_banana_api_key):
