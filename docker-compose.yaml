@@ -1,46 +1,16 @@
-version: '3.8'
-
 services:
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: street-view-cleaner-backend
-    restart: unless-stopped
-    volumes:
-      - ./.env:/app/.env:ro
-      # If using Google Vision local credential files, mount them securely:
-      - c:\Users:/root/.gcp:ro  # Adjust path matching your .env file
-    environment:
-      - ENV_MODE=production
+  street-view-cleaner:
+    build: .
     ports:
       - "8000:8000"
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-
-  frontend:
-    image: nginx:alpine
-    container_name: street-view-cleaner-frontend
-    restart: unless-stopped
-    ports:
-      - "80:80"
+    env_file: .env
     volumes:
-      - ./frontend:/usr/share/nginx/html:ro
-    depends_on:
-      backend:
-        condition: service_healthy
-# 1. Rename your updated file to the standard .yml extension, overwriting the old one
-mv docker-compose.yaml docker-compose.yml
-
-# 2. Tell Git to track the updated file and remove the duplicate name
-git add docker-compose.yml
-git rm docker-compose.yaml 2>/dev/null || git rm --cached docker-compose.yaml
-
-# 3. Push the clean, unified production stack back to GitHub
-git commit -m "chore: unify docker-compose configuration onto production stack layout"
-git push origin main
+      - ./storage:/app/storage
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --workers 4
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
